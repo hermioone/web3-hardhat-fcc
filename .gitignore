@@ -3,3 +3,4 @@
 **/.encryptedKey.json 
 **/artifacts/**
 **/cache/**
+**/coverage

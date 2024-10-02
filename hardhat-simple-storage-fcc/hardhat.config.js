@@ -3,6 +3,8 @@ require("dotenv").config();
 // require("@nomiclabs/hardhat-etherscan");
 require("@nomicfoundation/hardhat-verify");
 require("./tasks/block-number");
+require("hardhat-gas-reporter");
+require("solidity-coverage")
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -23,9 +25,11 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-const SEPOLIA_PRC_URL = process.env.SEPOLIA_PRC_URL;
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+
+// 如果 process.env.SEPOLIA_PRC_URL 不存在，则 SEPOLIA_PRC_URL 为 ""
+const SEPOLIA_PRC_URL = process.env.SEPOLIA_PRC_URL || "";
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
 module.exports = {
     solidity: "0.8.8",
@@ -45,4 +49,8 @@ module.exports = {
             chainId: 31337,
         },
     },
+	gasReporter: {
+		enabled: true,
+		// outputFile: "resports/gas-report.txt",
+	}
 };
