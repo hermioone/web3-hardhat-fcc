@@ -1,0 +1,54 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorInterface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n// solhint-disable-next-line interface-starts-with-i\ninterface AggregatorInterface {\n  function latestAnswer() external view returns (int256);\n\n  function latestTimestamp() external view returns (uint256);\n\n  function latestRound() external view returns (uint256);\n\n  function getAnswer(uint256 roundId) external view returns (int256);\n\n  function getTimestamp(uint256 roundId) external view returns (uint256);\n\n  event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 updatedAt);\n\n  event NewRound(uint256 indexed roundId, address indexed startedBy, uint256 startedAt);\n}\n"
+    },
+    "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV2V3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport {AggregatorInterface} from \"./AggregatorInterface.sol\";\nimport {AggregatorV3Interface} from \"./AggregatorV3Interface.sol\";\n\n// solhint-disable-next-line interface-starts-with-i\ninterface AggregatorV2V3Interface is AggregatorInterface, AggregatorV3Interface {}\n"
+    },
+    "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n// solhint-disable-next-line interface-starts-with-i\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  function getRoundData(\n    uint80 _roundId\n  ) external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);\n\n  function latestRoundData()\n    external\n    view\n    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);\n}\n"
+    },
+    "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport \"../shared/interfaces/AggregatorV2V3Interface.sol\";\n\n/**\n * @title MockV3Aggregator\n * @notice Based on the FluxAggregator contract\n * @notice Use this contract when you need to test\n * other contract's ability to read data from an\n * aggregator contract, but how the aggregator got\n * its answer is unimportant\n */\ncontract MockV3Aggregator is AggregatorV2V3Interface {\n  uint256 public constant override version = 0;\n\n  uint8 public override decimals;\n  int256 public override latestAnswer;\n  uint256 public override latestTimestamp;\n  uint256 public override latestRound;\n\n  mapping(uint256 => int256) public override getAnswer;\n  mapping(uint256 => uint256) public override getTimestamp;\n  mapping(uint256 => uint256) private getStartedAt;\n\n  constructor(uint8 _decimals, int256 _initialAnswer) {\n    decimals = _decimals;\n    updateAnswer(_initialAnswer);\n  }\n\n  function updateAnswer(int256 _answer) public {\n    latestAnswer = _answer;\n    latestTimestamp = block.timestamp;\n    latestRound++;\n    getAnswer[latestRound] = _answer;\n    getTimestamp[latestRound] = block.timestamp;\n    getStartedAt[latestRound] = block.timestamp;\n  }\n\n  function updateRoundData(uint80 _roundId, int256 _answer, uint256 _timestamp, uint256 _startedAt) public {\n    latestRound = _roundId;\n    latestAnswer = _answer;\n    latestTimestamp = _timestamp;\n    getAnswer[latestRound] = _answer;\n    getTimestamp[latestRound] = _timestamp;\n    getStartedAt[latestRound] = _startedAt;\n  }\n\n  function getRoundData(\n    uint80 _roundId\n  )\n    external\n    view\n    override\n    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)\n  {\n    return (_roundId, getAnswer[_roundId], getStartedAt[_roundId], getTimestamp[_roundId], _roundId);\n  }\n\n  function latestRoundData()\n    external\n    view\n    override\n    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)\n  {\n    return (\n      uint80(latestRound),\n      getAnswer[latestRound],\n      getStartedAt[latestRound],\n      getTimestamp[latestRound],\n      uint80(latestRound)\n    );\n  }\n\n  function description() external pure override returns (string memory) {\n    return \"v0.8/tests/MockV3Aggregator.sol\";\n  }\n}\n"
+    },
+    "contracts/FundMe.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n// yarn add --dev @chainlink/contracts\nimport {AggregatorV3Interface} from \"@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol\";\nimport {PriceConverter} from \"./PriceConverter.sol\";\n\nerror FundMe_NotOwner();\n\n/**\n * @title A contract for crowd funding\n * @author hermione\n * @notice This contract is to demo a sample funding contract\n */\ncontract FundMe {\n\n    // 加上这个后，就相当于让 uint256 继承了 PriceConverter 中的所有函数\n    using PriceConverter for uint256;\n\n    mapping(address => uint256) public fundersToAmount;\n    address[] public funders;\n    // 10 USD（放大 10 ** 18 倍）\n    uint256 constant private MINIMUM_VALUE = 10 * (10 ** 18);\n    address private owner;\n\n    AggregatorV3Interface private dataFeed;\n\n    constructor(address priceFeed) {\n        // 使用的 Sepolia 测试网\n        dataFeed = AggregatorV3Interface(priceFeed);\n        owner = msg.sender;\n    }\n\n    function fund() external payable {\n        require(msg.value.getConversionRate(dataFeed) >= MINIMUM_VALUE, \"Send more ETH.\");\n        fundersToAmount[msg.sender] = msg.value;\n        funders.push(msg.sender);\n    }\n\n\n    function withdraw() public payable {\n        require(msg.sender == owner, \"This func can only be called by owner\");\n\n        for (uint256 idx = 0; idx < funders.length; idx++) {\n            address funder = funders[idx];\n            fundersToAmount[funder] = 0;\n        }\n        funders = new address[](0);\n\n        // payable(msg.sender).transfer(address(this).balance);\n        (bool success,) = payable(msg.sender).call{value: address(this).balance}(\"\");\n        require(success, \"Failed to withdraw\");\n    }\n\n    function cheaperWithdraw() public payable onlyOwner {\n        address[] memory m_funders = funders;\n        // mapping 不能存储在 memory 中\n        for (uint256 idx = 0; idx < m_funders.length; idx++) {\n            address funder = m_funders[idx];\n            fundersToAmount[funder] = 0;\n        }\n    }\n\n    // modifier 有点类似于 AOP\n    modifier onlyOwner {\n        if (msg.sender != owner) {\n            revert FundMe_NotOwner();\n        }\n        _;\n    }\n\n    function transferOwnership(address newOwner) onlyOwner public {\n        owner = newOwner;\n    }\n\n    function getPriceFee() public view returns(AggregatorV3Interface)  {\n        return dataFeed;\n    }\n\n    function getAddressToAmountFunded(address fundingAddress) public view returns (uint256){\n        return fundersToAmount[fundingAddress];\n    }\n\n    function getFundersCount() public view returns(uint256)  {\n        return funders.length;\n    }\n}\n"
+    },
+    "contracts/PriceConverter.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\n// yarn add --dev @chainlink/contracts\nimport {AggregatorV3Interface} from \"@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol\";\n\nlibrary PriceConverter {\n\n    function getConversionRate(uint256 ethAmount, AggregatorV3Interface dataFeed) internal view returns (uint256) {\n        // ethAmount 是以 wei 为单位（放大了 10 ** 18 ），但是 ethPrice 是（ETH / USD）的结果放大 10 ** 8\n        (\n            /* uint80 roundID */,\n            int answer,\n            /*uint startedAt*/,\n            /*uint timeStamp*/,\n            /*uint80 answeredInRound*/\n        ) = dataFeed.latestRoundData();\n        uint256 ethPrice = uint256(answer);\n        // 为了统一位数，这个 func 的结果要放大 10 ** 18，所以需要除以 10 ** 8\n        return ethAmount * ethPrice / (10 ** 8);\n    }\n\n}"
+    },
+    "contracts/test/MockV3Aggregator.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\nimport \"@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol\";\n\n"
+    }
+  },
+  "settings": {
+    "evmVersion": "paris",
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
