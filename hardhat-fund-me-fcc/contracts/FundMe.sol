@@ -84,4 +84,8 @@ contract FundMe {
     function getFundersCount() public view returns(uint256)  {
         return funders.length;
     }
+
+    function getOwner() public view returns(address) {
+        return owner;
+    }
 }
