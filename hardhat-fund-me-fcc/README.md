@@ -17,6 +17,27 @@
 
 添加这个插件后，就可以看到 `yarn hardhat` 中添加了一个 deploy 的 task，这个 task 会自动执行 `deploy/` 目录下的所有 js 脚本（按照顺序）。
 
+`deploy/` 目录下的 js 脚本都是下面的格式：
+
+```js
+module.exports = async ({ getNamedAccounts, deployments }) => {
+    const deploy = deployments.deploy;
+    const log = deployments.log;
+    const deployer = await getNamedAccounts().deployer;
+};
+```
+
+其实就等价于：
+
+```js
+module.exports = async (hre) => {
+    const getNamedAccounts = hre.getNamedAccounts;
+    const deployments = hre.deployments;
+}
+```
+
+`hre` 是 hardhat-deploy 插件传入的参数，其实就是 `const hre = require("hardhat")`。
+
 ### 2.2 namedAccounts
 
 namedAccounts 是 hardhat-deploy 的一個欄位

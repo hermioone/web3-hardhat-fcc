@@ -7,3 +7,7 @@
 **/coverage.json
 **/.idea
 **/deployments
+
+.vscode/**
+.idea/**
+**/.idea/**
