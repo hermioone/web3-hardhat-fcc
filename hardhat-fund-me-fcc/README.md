@@ -23,7 +23,7 @@
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const deploy = deployments.deploy;
     const log = deployments.log;
-    const deployer = await getNamedAccounts().deployer;
+    const deployer = (await getNamedAccounts()).deployer;
 };
 ```
 
